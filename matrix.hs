@@ -23,31 +23,23 @@ to_int_array :: Matrix (Ratio Integer)-> [[Integer]]
 to_int_array m = map (map numerator) $ to_array $ scalar_multiply common_denom m
   where common_denom = (foldl1 lcm $ concatMap (map denominator) $ to_array m) % 1
 
-row index arr = array ((1,1),(1,end)) [((1,x), arr ! (index, x)) | x <- [1..end]]
-                  where end = snd $ snd $ bounds arr
+dot_product :: (Num x) => [x] -> [x] -> x
+dot_product row column = sum $ zipWith (*) row column
 
-column index arr = array ((1,1),(end,1)) [((x,1), arr ! (x, index)) | x <- [1..end]]
-                  where end = snd $ snd $ bounds arr
+row_array :: Integer -> Matrix x -> [x]
+row_array r m = map (m !) $ range ((r,1),(r,cols))
+  where (_,(_,cols)) = bounds m
 
-row_to_array arr = 
-  case (bounds arr) of
-    ((1,1),(1,_)) -> [arr ! (1,x) | x <- [1..(snd $ snd $ bounds arr)]]
-    _ -> error "not a row"
-  
-column_to_array arr = 
-  case (bounds arr) of
-    ((1,1),(_,1)) -> [arr ! (x,1) | x <- [1..(fst $ snd $ bounds arr)]]
-    _ -> error "not a row"
-
-dot_product :: (Num x) => Matrix x -> Matrix x-> x
-dot_product row column = sum $  zipWith (*) (row_to_array row) (column_to_array column)
+col_array :: Integer -> Matrix x -> [x]
+col_array c m = map (m !) $ range ((1,c),(rows,c))
+  where (_,(rows,_)) = bounds m
 
 matrix_multiply :: (Num x) => Matrix x -> Matrix x -> Matrix x
 matrix_multiply ar1 ar2 = 
   if x == y then answer else error "dimension mismatch"
-    where (w, x) = snd $ bounds ar1
-          (y, z) = snd $ bounds ar2
-          answer = array ((1,1),(w,z)) [((a,b), dot_product (row a ar1) (column b ar2)) | a <- [1..w], b <- [1..z]]
+    where (_,(w, x)) = bounds ar1
+          (_,(y, z)) = bounds ar2
+          answer = array ((1,1),(w,z)) [((a,b), dot_product (row_array a ar1) (col_array b ar2)) | a <- [1..w], b <- [1..z]]
 
 identity :: (Num x) => Integer -> Matrix x
 identity size = array ((1,1),(size,size)) [((x, y),(if x == y then 1 else 0)) | x <- [1..size], y <- [1..size]]
