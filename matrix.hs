@@ -67,7 +67,7 @@ multiply_row row_to_multiply factor arr = matrix_transform arr val_for
         multiplier x = if x == row_to_multiply then factor else 1
 
 add_row_multiple :: Integer -> Integer -> Fraction -> Matrix -> Matrix
-add_row_multiple r1 r2 multiple m = matrix_transform m val_for
+add_row_multiple r1 r2 multiple m = matrix_transform m val_for -- add a multiple of r2 to r1
   where val_for(x,y) 
           | x == r1 = (m ! (x,y)) + (m ! (r2,y)) * multiple
           | otherwise = m ! (x,y)
@@ -89,10 +89,13 @@ move_non_zero_to_diagonal diagonal m = move_iter diagonal
 
 
 reduce_diagonal :: Integer -> Matrix -> Maybe Matrix
-reduce_diagonal diagonal m = 
-  case (move_non_zero_to_diagonal diagonal m) of
-    Nothing -> Nothing
-    Just foo -> Just $ multiplyOut diagonal foo
+reduce_diagonal diagonal orig =  liftM (subtractOut (diagonal + 1)) $ liftM multiplyOut $ move_non_zero_to_diagonal diagonal orig
   where 
-    multiplyOut diagonal mm = multiply_row diagonal (1 / (mm ! (diagonal, diagonal))) mm
+    (_,(rows,cols)) = bounds orig
+    multiplyOut mm = multiply_row diagonal (1 / (mm ! (diagonal, diagonal))) mm -- multiply the diagonal row such that col val is one
+    subtractOut row mm -- subtract out the diagonal row from this row and all others such that our column value is zero
+      | row > rows = mm
+      | otherwise = subtractOut (row + 1) $ add_row_multiple row diagonal mult mm
+      where mult = my_val * (-1)
+            my_val = mm ! (row, diagonal)
 
