@@ -121,4 +121,20 @@ subtract_up row orig = case (lead_column) of
         | otherwise = subiter (r - 1) c $ add_row_multiple r row (val * (-1)) mm
         where val = mm ! (r, c)
 
-example = to_int_array $ reduced_row_echelon_form $ to_matrix [[2,1,-1,8],[-3,-1,2,-11],[-2,1,2,-3%1]]
+sample_matrix = to_matrix [[2,1,-1,8],[-3,-1,2,-11],[-2,1,2,-3%1]]
+invertible_matrix = to_matrix [[2,1,-1],[-3,-1,2],[-2,1,2%1]]
+
+
+augment_matrix :: Num(x) => Matrix x -> Matrix x
+augment_matrix m = array ((1,1),(rc,rc  + (col_count m))) $ old_data ++ id_data
+      where old_data = map (\v -> (v, m ! v)) $ range (bounds m) 
+            idm = identity rc
+            rc = row_count m
+            id_data =  map (\(x,y) -> ((x,y+(col_count m)), idm ! (x,y))) $ range (bounds idm) 
+
+-- todo - make a Maybe  
+invert_matrix m = drop_cols  $ reduced_row_echelon_form $ augment_matrix m
+  where drop_cols mm = array ((1,1),(row_count mm, (col_count mm) - (row_count m))) $ move_left $ filt $ inds_and_vals mm
+        filt = filter (\((x,y), val) -> y > (row_count m)) 
+        move_left = map (\((x,y), val) -> ((x,y-(row_count m)), val))
+        inds_and_vals mm  = map (\x -> (x, mm ! x)) $ range $ bounds mm
