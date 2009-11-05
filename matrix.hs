@@ -53,32 +53,30 @@ identity :: (Num x) => Integer -> Matrix x
 identity size = array ((1,1),(size,size)) [((x, y),(if x == y then 1 else 0)) | x <- [1..size], y <- [1..size]]
 
 scalar_multiply :: (Num x) => x -> Matrix x -> Matrix x
-scalar_multiply scalar m  = matrix_transform m (\(x,y) -> scalar * (m ! (x,y)))
+scalar_multiply scalar m  = matrix_transform m (\(x,y) cur -> scalar * cur)
 
 switch_rows :: (Num x) => Integer -> Integer -> Matrix x -> Matrix x
 switch_rows row_a row_b arr = matrix_transform arr val_for
-    where val_for(x,y) = arr ! (new_row x, y)
-          new_row r
-            | r == row_a = row_b
-            | r == row_b = row_a
-            | otherwise = r
+    where val_for (x,y) cur 
+            | x == row_a = arr ! (row_b, y)
+            | x == row_b = arr ! (row_a, y)
+            | otherwise = cur
 
 multiply_row :: (Num x) => Integer -> x -> Matrix x -> Matrix x
 multiply_row row_to_multiply factor arr = matrix_transform arr val_for
-  where val_for(x,y) = (arr ! (x,y)) * (multiplier x)
-        multiplier x = if x == row_to_multiply then factor else 1
+  where val_for (x,y) cur = if x == row_to_multiply then cur * factor else cur
 
 add_row_multiple :: (Num x) => Integer -> Integer -> x -> Matrix x -> Matrix x
 add_row_multiple r1 r2 multiple m = matrix_transform m val_for -- add a multiple of r2 to r1
-  where val_for(x,y) 
-          | x == r1 = (m ! (x,y)) + (m ! (r2,y)) * multiple
-          | otherwise = m ! (x,y)
+  where val_for (x,y) cur
+          | x == r1 = cur + (m ! (r2,y)) * multiple
+          | otherwise = cur
 
--- this only cares about the bounds - it would be more accurate to describe it is a matrix constructor
-matrix_transform :: Matrix x-> (MIndex -> x) -> Matrix x
+
+matrix_transform :: Matrix x-> (MIndex -> x-> x) -> Matrix x
 matrix_transform arr fun = 
-  array (bounds arr) [((x,y), fun(x,y)) | x <- [1..xlim], y <- [1..ylim]]
-    where (xlim,ylim) = snd $ bounds arr
+  array (bounds arr) [((x,y), fun (x,y) (arr ! (x,y))) | x <- [1..xlim], y <- [1..ylim]]
+    where (_,(xlim,ylim)) = bounds arr
 
 
 move_non_zero_to_diagonal :: (Num x) => Integer -> Matrix x-> Maybe (Matrix x)
