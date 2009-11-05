@@ -27,12 +27,10 @@ dot_product :: (Num x) => [x] -> [x] -> x
 dot_product row column = sum $ zipWith (*) row column
 
 row_array :: Integer -> Matrix x -> [x]
-row_array r m = map (m !) $ range ((r,1),(r,cols))
-  where (_,(_,cols)) = bounds m
+row_array r m = map (m !) $ range ((r,1),(r,col_count m))
 
 col_array :: Integer -> Matrix x -> [x]
-col_array c m = map (m !) $ range ((1,c),(rows,c))
-  where (_,(rows,_)) = bounds m
+col_array c m = map (m !) $ range ((1,c),(row_count m,c))
 
 matrix_multiply :: (Num x) => Matrix x -> Matrix x -> Matrix x
 matrix_multiply ar1 ar2 = 
@@ -45,37 +43,35 @@ identity :: (Num x) => Integer -> Matrix x
 identity size = array ((1,1),(size,size)) [((x, y),(if x == y then 1 else 0)) | x <- [1..size], y <- [1..size]]
 
 scalar_multiply :: (Num x) => x -> Matrix x -> Matrix x
-scalar_multiply scalar m  = matrix_transform m (\(x,y) cur -> scalar * cur)
+scalar_multiply scalar  = fmap (scalar *) 
+
+col_count :: Matrix x -> Integer
+col_count m = cols
+  where (_,(_,cols)) = bounds m
+
+row_count :: Matrix x -> Integer
+row_count m = rows
+  where (_,(rows,_)) = bounds m
 
 switch_rows :: (Num x) => Integer -> Integer -> Matrix x -> Matrix x
-switch_rows row_a row_b arr = matrix_transform arr val_for
-    where val_for (x,y) cur 
-            | x == row_a = arr ! (row_b, y)
-            | x == row_b = arr ! (row_a, y)
-            | otherwise = cur
+switch_rows row_a row_b m = 
+    m // ([((row_a, c), m ! (row_b, c)) | c <- [1..(col_count m)]] ++
+            [((row_b, c), m ! (row_a, c)) | c <- [1..(col_count m)]])
 
 multiply_row :: (Num x) => Integer -> x -> Matrix x -> Matrix x
-multiply_row row_to_multiply factor arr = matrix_transform arr val_for
-  where val_for (x,y) cur = if x == row_to_multiply then cur * factor else cur
+multiply_row row factor m = 
+  m // [((row, c), (m ! (row,c)) * factor) | c <- [1..(col_count m)]]
+
 
 add_row_multiple :: (Num x) => Integer -> Integer -> x -> Matrix x -> Matrix x
-add_row_multiple r1 r2 multiple m = matrix_transform m val_for -- add a multiple of r2 to r1
-  where val_for (x,y) cur
-          | x == r1 = cur + (m ! (r2,y)) * multiple
-          | otherwise = cur
-
-
-matrix_transform :: Matrix x-> (MIndex -> x-> x) -> Matrix x
-matrix_transform arr fun = 
-  array (bounds arr) [((x,y), fun (x,y) (arr ! (x,y))) | x <- [1..xlim], y <- [1..ylim]]
-    where (_,(xlim,ylim)) = bounds arr
+add_row_multiple r1 r2 multiple m = -- add a multiple of r2 to r1
+  m // [((r1, c), (m ! (r1, c)) + multiple * (m ! (r2,c))) | c <- [1..(col_count m)]]
 
 
 move_non_zero_to_diagonal :: (Num x) => Integer -> Matrix x-> Maybe (Matrix x)
 move_non_zero_to_diagonal diagonal m = move_iter diagonal 
-  where (_,(rows,_)) = bounds m
-        move_iter cur_row 
-          | cur_row > rows = Nothing
+  where move_iter cur_row 
+          | cur_row > (row_count m) = Nothing
           | m ! (cur_row, diagonal) == 0 = move_iter (cur_row + 1)
           | otherwise =  Just $ switch_rows cur_row diagonal m
 
@@ -101,12 +97,11 @@ reduce_d i m =
 
 row_echelon_form :: (Fractional x) => Matrix x -> Matrix x
 row_echelon_form m = foldl (flip reduce_d) m [1..end]
-  where end = min rows cols
-        (_,(rows,cols)) = bounds m
+  where end = min (row_count m) (col_count m)
 
 reduced_row_echelon_form :: (Fractional x) => Matrix x -> Matrix x
-reduced_row_echelon_form m = foldl (flip subtract_up) ref [end,(end-1)..1]
-  where (_,(end,_)) = bounds m
+reduced_row_echelon_form m = foldl (flip subtract_up) ref [rc,(rc-1)..1]
+  where rc = row_count m
         ref = row_echelon_form m
 
 -- zero out the entries about the lead for the given diagonal
