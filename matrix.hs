@@ -20,6 +20,10 @@ to_array m = map (map (\x -> m ! x)) coord_array
     indexed_rows = zip [1..] $ genericTake rows $ repeat [1..cols]
     coord_array = map (\(r,arr) -> zip (repeat r) arr) $ indexed_rows
 
+to_int_array :: Matrix -> [[Integer]]
+to_int_array m = map (map numerator) $ to_array $ scalar_multiply common_denom m
+  where common_denom = (foldl1 lcm $ concatMap (map denominator) $ to_array m) % 1
+
 square :: Matrix
 square = to_matrix [[1,2],[3,4]]
 lump = to_matrix [[1,2,3],[4,5,6]]
@@ -52,6 +56,9 @@ matrix_multiply ar1 ar2 =
 
 identity :: Integer -> Matrix
 identity size = array ((1,1),(size,size)) [((x, y),(if x == y then 1 else 0)) | x <- [1..size], y <- [1..size]]
+
+scalar_multiply :: Fraction -> Matrix -> Matrix 
+scalar_multiply scalar m  = matrix_transform m (\(x,y) -> scalar * (m ! (x,y)))
 
 switch_rows :: Integer -> Integer -> Matrix -> Matrix
 switch_rows row_a row_b arr = matrix_transform arr val_for
@@ -87,7 +94,7 @@ move_non_zero_to_diagonal diagonal m = move_iter diagonal
           | m ! (cur_row, diagonal) == 0 = move_iter (cur_row + 1)
           | otherwise =  Just $ switch_rows cur_row diagonal m
 
-
+-- reduce diagonal and all rows below it - return nothing if can't get non zero lead
 reduce_diagonal :: Integer -> Matrix -> Maybe Matrix
 reduce_diagonal diagonal orig =  liftM (subtractOut (diagonal + 1)) $ liftM multiplyOut $ move_non_zero_to_diagonal diagonal orig
   where 
@@ -98,4 +105,17 @@ reduce_diagonal diagonal orig =  liftM (subtractOut (diagonal + 1)) $ liftM mult
       | otherwise = subtractOut (row + 1) $ add_row_multiple row diagonal mult mm
       where mult = my_val * (-1)
             my_val = mm ! (row, diagonal)
+-- as above, returning original matrix if can't get non zero lead
+reduce_d :: Integer -> Matrix -> Matrix
+reduce_d i m = 
+  case (reduce_diagonal i m) of
+    Nothing -> m
+    Just n -> n
 
+
+row_echelon_form :: Matrix -> Matrix
+row_echelon_form m = foldl (flip reduce_d) m [1..end]
+  where end = max rows cols
+        (_,(rows,cols)) = bounds m
+
+example = to_matrix [[3,-9,12,-9,6,15],[3,-7,8,-5,8,9],[0,3,-6,6,4,-5]]
