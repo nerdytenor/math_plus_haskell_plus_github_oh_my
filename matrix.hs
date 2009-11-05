@@ -136,3 +136,4 @@ subtract_up row orig = case (lead_column) of
         | otherwise = subiter (r - 1) c $ add_row_multiple r row (val * (-1)) mm
         where val = mm ! (r, c)
 
+example = to_int_array $ reduced_row_echelon_form $ to_matrix [[2,1,-1,8],[-3,-1,2,-11],[-2,1,2,-3%1]]
