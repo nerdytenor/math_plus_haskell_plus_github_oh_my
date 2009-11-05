@@ -115,7 +115,29 @@ reduce_d i m =
 
 row_echelon_form :: Matrix -> Matrix
 row_echelon_form m = foldl (flip reduce_d) m [1..end]
-  where end = max rows cols
+  where end = min rows cols
         (_,(rows,cols)) = bounds m
+
+reduced_row_echelon_form :: Matrix -> Matrix
+reduced_row_echelon_form m = foldl (flip subtract_up) ref [end,(end-1)..1]
+  where (_,(end,_)) = bounds m
+        ref = row_echelon_form m
+
+-- zero out the entries about the lead for the given diagonal
+subtract_up :: Integer -> Matrix -> Matrix
+subtract_up row orig = case (lead_column) of
+  Nothing -> orig
+  Just x -> subiter (row - 1) x orig
+  where 
+      (_,(_,cols)) = bounds $ orig
+      lead_column  = lciter 1 
+      lciter x
+        | x > cols = Nothing
+        | orig ! (row, x) == 1 = Just x
+        | otherwise = lciter (x + 1)
+      subiter r c mm
+        | r == 0 = mm
+        | otherwise = subiter (r - 1) c $ add_row_multiple r row (val * (-1)) mm
+        where val = mm ! (r, c)
 
 example = to_matrix [[3,-9,12,-9,6,15],[3,-7,8,-5,8,9],[0,3,-6,6,4,-5]]
