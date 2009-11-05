@@ -24,10 +24,6 @@ to_int_array :: Matrix -> [[Integer]]
 to_int_array m = map (map numerator) $ to_array $ scalar_multiply common_denom m
   where common_denom = (foldl1 lcm $ concatMap (map denominator) $ to_array m) % 1
 
-square :: Matrix
-square = to_matrix [[1,2],[3,4]]
-lump = to_matrix [[1,2,3],[4,5,6]]
-
 row index arr = array ((1,1),(1,end)) [((1,x), arr ! (index, x)) | x <- [1..end]]
                   where end = snd $ snd $ bounds arr
 
