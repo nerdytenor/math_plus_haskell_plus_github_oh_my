@@ -132,9 +132,13 @@ augment_matrix m = array ((1,1),(rc,rc  + (col_count m))) $ old_data ++ id_data
             rc = row_count m
             id_data =  map (\(x,y) -> ((x,y+(col_count m)), idm ! (x,y))) $ range (bounds idm) 
 
--- todo - make a Maybe  
-invert_matrix m = drop_cols  $ reduced_row_echelon_form $ augment_matrix m
-  where drop_cols mm = array ((1,1),(row_count mm, (col_count mm) - (row_count m))) $ move_left $ filt $ inds_and_vals mm
+-- todo clean
+invert_matrix :: (Fractional x) => Matrix x -> Maybe (Matrix x)
+invert_matrix m = if (has_zero_row rref) then Nothing else Just inverted
+  where inverted = drop_orig rref 
+        rref = reduced_row_echelon_form $ augment_matrix m
+        drop_orig mm = array ((1,1),(row_count mm, (col_count mm) - (row_count m))) $ move_left $ filt $ inds_and_vals mm
         filt = filter (\((x,y), val) -> y > (row_count m)) 
         move_left = map (\((x,y), val) -> ((x,y-(row_count m)), val))
         inds_and_vals mm  = map (\x -> (x, mm ! x)) $ range $ bounds mm
+        has_zero_row mm = or $ map (all (== 0)) $ map (genericTake (row_count m)) $ to_array mm
