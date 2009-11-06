@@ -132,13 +132,16 @@ augment_matrix m = array ((1,1),(rc,rc  + (col_count m))) $ old_data ++ id_data
             rc = row_count m
             id_data =  map (\(x,y) -> ((x,y+(col_count m)), idm ! (x,y))) $ range (bounds idm) 
 
--- todo clean
+-- get a subset of the matrix by selecting columns (left, right) inclusive
+select_columns :: (Num m) => (Integer,Integer) ->  Matrix m -> Matrix m
+select_columns (left, right) m = array ((1,1),(row_count m, right - left + 1)) vals
+  where vals =  move_left $ filter_column (>= left) $ filter_column (<= right) $ assocs m 
+        filter_column f = filter (\((_,c),_) -> f c)
+        move_left = map (\((row,col),val) -> ((row, col - left + 1),val)) 
+
 invert_matrix :: (Fractional x) => Matrix x -> Maybe (Matrix x)
-invert_matrix m = if (has_zero_row rref) then Nothing else Just inverted
-  where inverted = drop_orig rref 
-        rref = reduced_row_echelon_form $ augment_matrix m
-        drop_orig mm = array ((1,1),(row_count mm, (col_count mm) - (row_count m))) $ move_left $ filt $ inds_and_vals mm
-        filt = filter (\((x,y), val) -> y > (row_count m)) 
-        move_left = map (\((x,y), val) -> ((x,y-(row_count m)), val))
-        inds_and_vals mm  = map (\x -> (x, mm ! x)) $ range $ bounds mm
-        has_zero_row mm = or $ map (all (== 0)) $ map (genericTake (row_count m)) $ to_array mm
+invert_matrix m = if (has_zero_row reduced_original) then Nothing else Just inverted
+  where combined_rref = reduced_row_echelon_form $ augment_matrix m
+        inverted = select_columns ((col_count m) + 1, (col_count m) * 2) combined_rref 
+        reduced_original = select_columns (1, (col_count m)) combined_rref         
+        has_zero_row mm = or $ map (all (== 0)) $ to_array mm
