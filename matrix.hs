@@ -145,3 +145,31 @@ invert_matrix m = if (has_zero_row reduced_original) then Nothing else Just inve
         inverted = select_columns ((col_count m) + 1, (col_count m) * 2) combined_rref 
         reduced_original = select_columns (1, (col_count m)) combined_rref         
         has_zero_row mm = or $ map (all (== 0)) $ to_array mm
+transform_matrix :: Matrix x -> Matrix x
+transform_matrix m = array ((1,1),(col_count m, row_count m)) flipped_assocs
+  where flipped_assocs = map (\((a,b),v) -> ((b,a),v)) $ assocs m
+
+data Solution x = Unique [x] | Infinite [x] | NoSolution
+  deriving (Eq, Show)
+
+-- given a matrix representation of a system of n equations and n unknowns (where matrix is in form Ab where Ax = b),
+-- solve it
+-- todo generalize to m equations in n unknowns
+solve :: (Fractional x) => Matrix x -> Solution x
+solve m 
+  | bad_row_found   = NoSolution
+  | zero_row_found  = Infinite answer
+  | otherwise            = Unique answer
+  where
+    answer = head $ to_array $ transform_matrix $ select_columns (col_count m, col_count m) $ rref
+    rref = reduced_row_echelon_form m
+    bad_row_found = or $ map badrowfun $ to_array rref
+      where badrowfun arr = ((last arr) /= 0) && (all (== 0) (init arr))
+    zero_row_found = or $ map (all (== 0)) $ to_array rref
+
+
+ 
+
+
+
+
